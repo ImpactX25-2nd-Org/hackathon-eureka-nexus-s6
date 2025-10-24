@@ -96,6 +96,18 @@ const Booking = () => {
         title: "Pickup scheduled!",
         description: `Booking ID: ${data.bookingId}`,
       });
+      
+      // Reset form
+      setWasteType("");
+      setAddress("");
+      setPickupTime("");
+      setNotes("");
+      setPhoto(null);
+      
+      // Reset file input
+      const fileInput = document.getElementById("photo-upload") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+
       setTimeout(() => navigate("/dashboard"), 2000);
     },
     onError: (error: Error) => {
@@ -109,6 +121,7 @@ const Booking = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!wasteType || !address || !pickupTime) {
       toast({
         title: "Missing information",
@@ -117,14 +130,17 @@ const Booking = () => {
       });
       return;
     }
-    
-    createBookingMutation.mutate({
+
+    const bookingData = {
       wasteType,
       address,
-      notes,
       pickupTime,
-      photo: photo || undefined,
-    });
+      notes: notes.trim() || undefined,
+      photo: photo ?? undefined,
+    };
+
+    console.log("Submitting booking:", bookingData);
+    createBookingMutation.mutate(bookingData);
   };
 
   return (

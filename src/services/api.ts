@@ -1,4 +1,30 @@
-import { API_BASE_URL, API_ENDPOINTS } from "@/config/api";
+// src/services/api.ts
+
+const API_BASE_URL = "http://localhost:5000";
+
+const API_ENDPOINTS = {
+  // Orders
+  orders: "/api/orders",
+  orderDetails: (orderId: string) => `/api/orders/${orderId}`,
+  
+  // Booking
+  createBooking: "/api/bookings/create",
+  
+  // Users
+  users: "/api/users",
+  profile: "/api/profile",
+  
+  // Drivers
+  drivers: "/api/drivers",
+  
+  // Products (if needed)
+  products: "/api/products",
+  productDetails: (productId: number) => `/api/products/${productId}`,
+  
+  // Services (if needed)
+  pricing: "/api/pricing",
+  services: "/api/services",
+};
 
 // ✅ Generic fetch wrapper
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -11,7 +37,8 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(errorData.error || `API Error: ${response.statusText}`);
   }
 
   return response.json();
@@ -53,12 +80,41 @@ export interface Booking {
   service: string;
 }
 
+// Backend Order Response (matches your actual backend)
+export interface BackendOrder {
+  pickupId: string;
+  wasteType: string;
+  pickupTime: string;
+  pickupDate: string;
+  userLocation: string;
+  cost: string;
+  pickupRating: number;
+  notes: string;
+  photoFilename: string | null;
+  userId: number;
+  driverId: number;
+}
+
 export const orderService = {
   getOrderDetails: (orderId: string) =>
     fetchAPI<OrderDetails>(API_ENDPOINTS.orderDetails(orderId)),
 
-  getAllOrders: () =>
-    fetchAPI<Booking[]>(API_ENDPOINTS.orders),
+  getAllOrders: async (): Promise<Booking[]> => {
+    const backendOrders = await fetchAPI<BackendOrder[]>(API_ENDPOINTS.orders);
+    
+    // Map backend format to frontend format
+    return backendOrders.map(order => ({
+      id: order.pickupId,
+      status: order.pickupRating > 0 ? "Completed" : "Scheduled",
+      date: order.pickupDate,
+      time: order.pickupTime,
+      address: order.userLocation,
+      service: order.wasteType,
+    }));
+  },
+  
+  getOrderById: (orderId: string) =>
+    fetchAPI<BackendOrder>(API_ENDPOINTS.orderDetails(orderId)),
 };
 
 // ✅ User Services
@@ -79,8 +135,8 @@ export const userService = {
 export interface CreateBookingData {
   wasteType: string;
   address: string;
-  notes: string;
   pickupTime: string;
+  notes?: string;
   photo?: File;
 }
 
@@ -91,27 +147,46 @@ export interface BookingResponse {
 }
 
 export const bookingService = {
-  createBooking: async (data: CreateBookingData) => {
+  createBooking: async (data: CreateBookingData): Promise<BookingResponse> => {
+    console.log("📤 Sending booking request:", {
+      wasteType: data.wasteType,
+      address: data.address,
+      pickupTime: data.pickupTime,
+      hasNotes: !!data.notes,
+      hasPhoto: !!data.photo,
+    });
+
     const formData = new FormData();
+    
+    // Add required fields
     formData.append("wasteType", data.wasteType);
     formData.append("address", data.address);
-    formData.append("notes", data.notes);
     formData.append("pickupTime", data.pickupTime);
+    
+    // Add optional fields only if they exist
+    if (data.notes) {
+      formData.append("notes", data.notes);
+    }
+    
     if (data.photo) {
       formData.append("photo", data.photo);
     }
 
-    // ✅ Fixed: Corrected fetch call and variable name
     const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.createBooking}`, {
       method: "POST",
       body: formData,
+      // Don't set Content-Type header - browser will set it with boundary
     });
 
     if (!response.ok) {
-      throw new Error(`Booking failed: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+      console.error("❌ Booking failed:", errorData);
+      throw new Error(errorData.error || `Booking failed: ${response.statusText}`);
     }
 
-    return response.json() as Promise<BookingResponse>;
+    const result = await response.json();
+    console.log("✅ Booking successful:", result);
+    return result;
   },
 };
 

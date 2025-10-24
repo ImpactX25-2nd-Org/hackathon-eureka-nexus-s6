@@ -1,7 +1,7 @@
 // src/config/api.ts
 
 // ✅ Use a trailing slash-safe base URL
-export const API_BASE_URL = "http://127.0.0.1:10000";
+export const API_BASE_URL = "http://127.0.0.1:5000";
 
 // ✅ Centralized API endpoints
 export const API_ENDPOINTS = {
