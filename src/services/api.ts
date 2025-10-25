@@ -3,6 +3,14 @@
 const API_BASE_URL = "http://localhost:5000";
 
 const API_ENDPOINTS = {
+  // Auth
+  signup: "/api/auth/signup",
+  login: "/api/auth/login",
+  
+  // Chat
+  chat: "/api/chat",
+  chatReset: "/api/chat/reset",
+  
   // Orders
   orders: "/api/orders",
   orderDetails: (orderId: string) => `/api/orders/${orderId}`,
@@ -225,4 +233,114 @@ export const serviceService = {
 
   getServices: () =>
     fetchAPI<Service[]>(API_ENDPOINTS.services),
+};
+
+// ✅ Auth Services
+export interface SignUpData {
+  username: string;
+  email: string;
+  password: string;
+  userType: string;
+  phone?: string;
+  location?: string;
+}
+
+export interface LoginData {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  userId?: number;
+  userType?: string;
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+  };
+}
+
+export const authService = {
+  signup: async (data: SignUpData): Promise<AuthResponse> => {
+    const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.signup}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Signup failed" }));
+      throw new Error(errorData.error || "Failed to create account");
+    }
+
+    return response.json();
+  },
+
+  login: async (data: LoginData): Promise<AuthResponse> => {
+    const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.login}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Login failed" }));
+      throw new Error(errorData.error || "Invalid credentials");
+    }
+
+    return response.json();
+  },
+};// Add this at the end of your api.ts file
+
+// ✅ Chat Services
+export interface ChatMessage {
+  message: string;
+  sessionId?: string;
+}
+
+export interface ChatResponse {
+  success: boolean;
+  response: string;
+  sessionId: string;
+}
+
+export const chatService = {
+  sendMessage: async (data: ChatMessage): Promise<ChatResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Chat failed" }));
+      throw new Error(errorData.error || "Failed to get response from Clancy AI");
+    }
+
+    return response.json();
+  },
+
+  resetChat: async (sessionId?: string): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch(`${API_BASE_URL}/api/chat/reset`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sessionId: sessionId || 'default' }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to reset chat");
+    }
+
+    return response.json();
+  },
 };

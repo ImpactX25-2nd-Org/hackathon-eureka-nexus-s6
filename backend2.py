@@ -3,6 +3,28 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from datetime import datetime, timezone
 import os
+import google.generativeai as genai
+
+# ---------------------- GEMINI AI CONFIG ----------------------
+API_KEY = "AIzaSyDZhyArJmCEXXFP7oTc9GLtm4_I6CNWsJo"
+genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel("gemini-2.0-flash-lite")
+
+# System prompt for Clancy AI
+CLANCY_SYSTEM_PROMPT = """You are Clancy AI, the customer support chatbot for Cleanzy, a smart waste management company. 
+
+Your responsibilities:
+- Answer all customer questions about Cleanzy's products, services, and processes in a helpful, professional, and friendly manner
+- If a customer asks about scheduling a new pickup, direct them to http://localhost:5173/booking
+- If a customer wants to track their order or waste pickup, redirect them to http://localhost:5173/dashboard
+- If you do not have enough information to answer a customer's question, politely inform them you do not know and offer to escalate the issue or direct them to a human support representative
+- Always provide clear, concise, and polite responses, following Cleanzy's tone and policies
+- Do not answer questions outside Cleanzy's scope
+
+Keep responses brief and friendly. Use emojis sparingly for a modern touch."""
+
+# Store chat sessions (in production, use Redis or database)
+chat_sessions = {}
 
 app = Flask(__name__)
 
@@ -120,6 +142,80 @@ def init_db():
 @app.route('/')
 def home():
     return {"message": "Backend is running!", "status": "ok"}
+
+# ---------------------- AUTH ROUTES ----------------------
+@app.route('/api/auth/signup', methods=['POST'])
+def signup():
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ["username", "email", "password", "userType"]
+        missing_fields = [field for field in required_fields if field not in data or not data[field]]
+        
+        if missing_fields:
+            return jsonify({"error": f"Missing fields: {', '.join(missing_fields)}"}), 400
+        
+        # Check if email already exists
+        existing_user = User.query.filter_by(useremail=data["email"]).first()
+        if existing_user:
+            return jsonify({"error": "Email already registered"}), 409
+        
+        # Create new user (in a real app, hash the password!)
+        new_user = User(
+            username=data["username"],
+            useremail=data["email"],
+            userphonenumber=data.get("phone", "0000000000"),
+            userlocation=data.get("location", "Not provided")
+        )
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        print(f"✅ New user created: {data['username']} ({data['email']})")
+        
+        return jsonify({
+            "success": True,
+            "message": "Account created successfully!",
+            "userId": new_user.userid,
+            "userType": data["userType"]
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Signup error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        
+        if not data.get("email") or not data.get("password"):
+            return jsonify({"error": "Email and password required"}), 400
+        
+        # Find user by email
+        user = User.query.filter_by(useremail=data["email"]).first()
+        
+        if not user:
+            return jsonify({"error": "Invalid credentials"}), 401
+        
+        # In a real app, verify hashed password here
+        print(f"✅ User logged in: {user.username}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Login successful!",
+            "user": {
+                "id": user.userid,
+                "username": user.username,
+                "email": user.useremail
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Login error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 # Users
 @app.route('/api/users', methods=['GET'])
@@ -262,9 +358,71 @@ def create_booking():
         traceback.print_exc()
         return jsonify({"error": error_msg}), 500
 
+# ---------------------- CHATBOT API ----------------------
+@app.route('/api/chat', methods=['POST'])
+def chat_with_clancy():
+    try:
+        data = request.get_json()
+        
+        if not data or 'message' not in data:
+            return jsonify({"error": "Message is required"}), 400
+        
+        user_message = data['message']
+        session_id = data.get('sessionId', 'default')
+        
+        print(f"💬 Chat request from session {session_id}: {user_message}")
+        
+        # Get or create chat session
+        if session_id not in chat_sessions:
+            chat_sessions[session_id] = model.start_chat(history=[])
+            # Send system prompt first
+            chat_sessions[session_id].send_message(CLANCY_SYSTEM_PROMPT)
+        
+        chat = chat_sessions[session_id]
+        
+        # Get response from Gemini
+        response = chat.send_message(user_message)
+        bot_response = response.text
+        
+        print(f"🤖 Clancy response: {bot_response[:100]}...")
+        
+        return jsonify({
+            "success": True,
+            "response": bot_response,
+            "sessionId": session_id
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Chat error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "error": "Failed to get response from Clancy AI",
+            "details": str(e)
+        }), 500
+
+@app.route('/api/chat/reset', methods=['POST'])
+def reset_chat():
+    try:
+        data = request.get_json() or {}
+        session_id = data.get('sessionId', 'default')
+        
+        if session_id in chat_sessions:
+            del chat_sessions[session_id]
+            print(f"🔄 Chat session {session_id} reset")
+        
+        return jsonify({
+            "success": True,
+            "message": "Chat session reset"
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ---------------------- RUN APP ----------------------
 if __name__ == '__main__':
     init_db()  # Initialize database on startup
     print("🚀 Starting Flask server on http://localhost:5000")
-    print("📡 CORS enabled for http://localhost:5173\n")
+    print("📡 CORS enabled for http://localhost:5173")
+    print("🤖 Clancy AI Chatbot initialized\n")
     app.run(debug=True, port=5000)
