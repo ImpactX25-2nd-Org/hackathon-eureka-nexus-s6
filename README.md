@@ -1,28 +1,59 @@
-# Welcome to your Lovable project
+NOTE:The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+ 
+ CLEANZY-Smart Waste Management System
+### An AI-Powered Circular Economy Solution
 
-## Project info
+## 🌍 Overview
+A smart, AI-driven platform that transforms waste management into a *sustainable circular economy* through *intelligent collection, segregation, and recycling*.  
+Designed to help cities, citizens, and municipalities manage waste efficiently while generating revenue.
 
-**URL**: https://lovable.dev/projects/f51d46fa-c5db-4f4d-842c-504bd65edb04
+---
 
-## How can I edit this code?
+## 🧩 Problem
+Urban India generates *150,000+ tonnes* of waste daily — only *22–28%* is treated properly.  
+Challenges include:
+- Inefficient collection & overflowing bins  
+- Poor segregation & recycling loss  
+- Unsafe handling of medical waste  
+- Lack of tracking and accountability  
 
-There are several ways of editing your application.
+---
 
-**Use Lovable**
+## 💡 Solution
+Our platform uses *AI, IoT, and automation* to:
+- Enable *scheduled & on-demand waste pickup*   
+- Provide *real-time tracking & dashboards*  
+- Handle *medical waste* with GPS and compliance systems  
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/f51d46fa-c5db-4f4d-842c-504bd65edb04) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## 💰 Revenue Streams
+1. User Subscriptions  
+2. Premium Waste Services  
+3. Recyclable Material Sales  
+4. Energy Generation (Biogas & Power)  
+5. Organic Compost  
+6. Carbon Credits  
+7. Municipal Partnerships  
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## ⚙️ Tech Stack
+*Frontend:* React / VITE / Tailwind CSS
+*Backend:* FLASK PYTHON,NODE.JS
+*Database:* SQLAlchemy
+*AI:* GEMINI2.0 LITE AND LOVABLE AI 
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+## 🌱 Impact
+- Reduces landfill waste  
+- Generates green energy & compost  
+- Improves public health & safety  
+- Supports zero-waste cities
 
-```sh
+
+
 # Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
 
